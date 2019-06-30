@@ -1,0 +1,117 @@
+function [results] = milmd_targets(data, parameters)
+% Determines target signatures using multiple instance learning for 
+% multiple diverse (MIL MD) algorithm.
+% Susan Meerdink
+% June 2019
+% Algorithm development found in:
+% P. Zhong, Z. Gong, and J. Shan, “Multiple Instance Learning for Multiple 
+% Diverse Hyperspectral Target Characterizations,” IEEE Trans. Neural Networks
+%
+% INPUTS:
+% data.dataBags: cell list with positive and negative bags [1, n_Bags]
+%                Each cell contains a single bag in the form a [n_samples, n_Bands]
+% 
+% data.labels: labels for dataBags [1, n_Bags]
+%              * the labels should be a row vector with labels corresponding to the 
+%              * parameters.posLabel and parameters.negLabel where a posLabel corresponds
+%              * to a positive bag and a negLabel corresponds to a negative bag.
+%              * The index of the label should match the index of the bag in dataBags 
+% parameters:
+%     K: number of target types in training bags
+%     methodFlag: (boolean) Use ACE (1) or SMF (0) as similarity measure    
+%     globalBackgroundFlag: (boolean) estimate the background mean and covariance from all data (1) or just negative bags (0)
+%     posLabel: what denotes a positive bag's label. ex) 1
+%     negLabel: what denotes a negative bag's label. ex) 0
+%     alpha: Uniqueness term weight in objective function, set to 0 if you do not want to use the term
+%
+% OUTPUTS:
+% results: a structure containing the following variables:
+%             1) b_mu: background mean [1, n_dim]
+%             2) b_cov: background covariance [n_dim, n_dim]
+%             3) sig_inv_half: inverse background covariance, [n_dim, n_dim]
+%             4) initTargets: the initial target signatures [n_targets, n_dim]
+%             5) methodFlag: value designating which method was used for similarity measure
+%             6) numTargets: the number of target signatures found
+%             7) optTargets: the optimized target signatures [n_opttargets,
+%                n_dim] Might have fewer targets then initTargets
+% ------------------------------------------------------------------------
+
+% 1) Whiten Data 
+addpath('Multi-Target-MI-ACE_SMF/algorithm')
+[dataBagsWhitened, dataInfo] = whitenData(data, parameters);
+pDataBags = dataBagsWhitened.dataBags(data.labels ==  parameters.posLabel);
+nDataBags = dataBagsWhitened.dataBags(data.labels == parameters.negLabel);
+
+% 2) Initialize target concept 
+if parameters.initType == 1
+    [initTargets, initTargetLocation, originalPDataBagNumbers, initObjectiveValue] = init1(pDataBags, nDataBags, parameters);
+elseif parameters.initType == 2
+    [initTargets, objectiveValues, C] = init2(pDataBags, nDataBags, parameters);
+elseif parameters.initType == 3
+    [initTargets, initObjectiveValue, clustCenters] = init_3(pDataBags, nDataBags, parameters);
+else
+    disp('Invalid initType parameter. Options are 1, 2, or 3.')
+    return
+end
+
+% 3) Optimize target concepts using MIL MD
+if parameters.optimize == 0
+    results = nonOptTargets(initTargets, parameters, dataInfo);
+elseif parameters.optimize == 1
+    results = optimizeTargets(data, initTargets, parameters);
+elseif parameters.optimize == 2
+    results = optTargetsMILMD(data, initTargets, parameters);
+else
+    disp('Invalid optimize parameter. Options are 0, 1, or 2.')
+    return
+end
+
+end
+
+function [initTargets, objectiveValues, C] = init_3(pDataBags, nDataBags, parameters)
+% Function that initializes target signatures using K Means and maximize 
+% MIL MD objective function
+% Inputs:
+% 1) pDataBags: a structure containing the positive bags (already whitened) 
+% 2) nDataBags: a structure containing the negative bags (already whitened)
+% 3) parameters: parameters variable where the following parameters are
+%                used - numClusters, maxIter, numTargets,  
+% OUTPUTS:
+% 1) initTargets: matrix containing the initial targets [n_targets, n_dim]
+% 2) objectiveValues: 
+% 3) C: the K-Means cluster centers 
+% ------------------------------------------------------------------------
+disp('Clustering Data');
+
+% Get K-Means cluster centers (C)
+pData = vertcat(pDataBags{:});
+[~, ~, ~, Cdist] = kmeans(pData, min(size(pData, 1), parameters.numClusters), 'MaxIter', parameters.maxIter);
+
+% Get instance closest to cluster center, use as representative of the cluster
+[~,idx] = min(Cdist);
+Ctargets = pData(idx,:);
+
+% Loop through the number of targets
+initTargets = zeros(parameters.numTargets, size(Ctargets,2));
+numTargetsLearned = 0;
+for target = 1:parameters.numTargets
+    disp(['Initializing Target: ' num2str(target)]);
+    
+    % Loop through the K-Means cluster representative instances
+    objectiveValues = zeros(1, size(Ctargets,1));
+    pBagMaxConf = zeros(size(Ctargets,1), size(pDataBags, 2));
+    for j = 1:size(Ctargets, 1)
+        [objectiveValues(j), ~, pBagMaxConf(j,:)] = evalObjFunc_milmd(pDataBags, nDataBags, Ctargets(j, :), initTargets, numTargetsLearned, parameters);
+    end
+    
+    %Get location of max objective value
+    [~, opt_loc] = max(objectiveValues);
+    initTargets(target,:) = Ctargets(opt_loc, :);
+    Ctargets(opt_loc,:) = 0;
+    
+    numTargetsLearned = numTargetsLearned + 1;
+end
+
+end
+
+
