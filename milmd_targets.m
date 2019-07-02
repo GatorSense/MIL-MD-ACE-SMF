@@ -93,6 +93,13 @@ pData = vertcat(pDataBags{:});
 Ctargets = pData(idx,:);
 
 milmd_ObjFuncInit(Ctargets, pDataBags, nDataBags, parameters)
+% % Loop through Targets
+% for t = 1:parameters.numTargets
+%     %Loop through KMean instance representatives
+%     for c = 1:size(Ctargets,1)
+%         milmd_ObjFuncInit(Ctargets(c,:), pDataBags, nDataBags, parameters)
+%     end
+% end
 
 end
 

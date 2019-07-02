@@ -1,4 +1,4 @@
-function [objValues, pBagMaxConfSig, pBagMaxConf, pBagMaxConfIndex] = milmd_ObjFuncInit(Ctargets, pDataBags, nDataBags, parameters)
+function [objValues, targetSigInit] = milmd_ObjFuncInit(Ctargets, pDataBags, nDataBags, parameters)
 % Function that evaluates the objective function for multiple instance learning for 
 % multiple diverse (MIL MD) algorithm. Uses Equation 15 on page 4. 
 % INPUTS:
@@ -6,7 +6,10 @@ function [objValues, pBagMaxConfSig, pBagMaxConf, pBagMaxConfIndex] = milmd_ObjF
 % 2) nDataBags: a cell array containing the negative bags
 % 3) parameters: a structure containing the parameter variables 
 % OUTPUTS:
-% 1)
+% 1) objValues: The calculated objective values for each combination of
+%               KMean cluster representatives.
+% 2) targetSigInit: the targets selected that maximize the objective
+%                   function. 
 % -------------------------------------------------------------------------
 
 % Find all combinations of KCluster target signatures
@@ -19,16 +22,19 @@ for c = 1:size(combo,1)
     targetSignature = Ctargets(combo(c,:),:);
     
     % Calculate Objective Function
-    cPos = evalC1(pDataBags, targetSignature, parameters);
-    cNeg = evalC2(targetSignature, nDataBags);
+    cPos = evalC1(targetSignature, pDataBags, parameters);
+    cNeg = evalC2(targetSignature, nDataBags, parameters);
     cUni = evalUnique(targetSignature, parameters);
     cCon = evalConstraint(targetSignature, parameters);
     objValues(c) = cPos - cNeg - cUni - cCon;
 end
 
+[~,targetIndex] = max(objValues);
+targetSigInit = Ctargets(combo(targetIndex,:),:);
+
 end
 
-function [cPos] = evalC1(pDataBags, targetSignatures, parameters)
+function [cPos] = evalC1(targetSignatures, pDataBags, parameters)
 % Average of the instances with maximum detection characteristics using 
 % the learned target signatures
 % INPUTS:
@@ -63,33 +69,37 @@ end
 
 %Calculate actual objectiveValue
 cPos = mean(pBagSum(:));
+
 end
 
-function [cNeg] = evalC2(targetSignature, nDataBags)
+function [cNeg] = evalC2(targetSignature, nDataBags, parameters)
 % Function that calculates the average of the max negative instances
 % INPUTS:
 % 1) targetSignature: the instances closest to the K-Means cluster centers [n_targets, n_dims]
 % 2) nDataBags: a cell array containing the negative bags
+% 3) parameters: a structure containing the parameter variables. variables
+%                used in this function - numTargets
 % OUTPUTS:
 % 1) cNeg: the computed term for the second term in the objective function.
 
-%Get average confidence of each negative bag
+%Get average max confidence of each negative bag
 numNBags = length(nDataBags);
-nBagMaxConf = zeros(1, numNBags);
+nBagMean = zeros(1, numNBags);
 for bag = 1:numNBags
     
     %Get data from specific bag
     nData = nDataBags{bag};
+    nBagMax = zeros(parameters.numTargets,1);
     
     for k = 1:size(targetSignature,1)
         %Confidence (dot product) of a sample across all other samples in nData, data has already been whitened
-        nBagMaxConf(bag) = max(nData.*targetSignature(k,:),2);
+        nBagMax(k) = max(sum(nData.*targetSignature(k,:),2));
     end
-    
+    nBagMean(bag) = mean(nBagMax);
 end
 
 % Calculate objective value
-cNeg = mean(nBagMaxConf(:));
+cNeg = mean(nBagMean(:));
 
 end
 
@@ -103,10 +113,12 @@ function [cU] = evalUnique(targetSignatures, parameters)
 %                used in this function - alpha, numTargets
 % OUTPUTS:
 % 1) cU: the computed term for the third term in the objective function.
-
-similarities = sum(targetSignatures.*targetSignatures, 2);
-top = (2*parameters.alpha)/(parameter.numTargets*(parameter.numTargets-1));
-cU = top * similarities;
+sim = zeros(parameters.numTargets-1,1);
+for k = 1:parameters.numTargets-1
+    sim(k) = sum(targetSignatures(k,:).*targetSignatures(k+1,:), 2);
+end
+top = (2*parameters.alpha)/(parameters.numTargets*(parameters.numTargets-1));
+cU = top * sum(sim);
 
 end
 
@@ -125,7 +137,7 @@ const = zeros(parameters.numTargets,1);
 for k = 1:parameters.numTargets
     const(k) = abs((targetSignature(k)'.*targetSignature(k)) - 1);
 end
-cCon = (parameters.lamba / parameter.numTargets) * sum(const);
+cCon = (parameters.lambda / parameters.numTargets) * sum(const);
 
 end
 
