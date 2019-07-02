@@ -14,6 +14,9 @@ data_spec = table2array(data_table(:,12:end));
 bbl = [0,0,0,0,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0];
 data_spec = data_spec(:,find(bbl == 1));
 
+% Add Multi-Target-MI-ACE_SMF git repo to path
+addpath('Multi-Target-MI-ACE_SMF\algorithm\')
+
 %% Split data into Training and Testing
 % In this example, we will use paved and unpaved as our classes (located in
 % column 3 of the metadata). The name of each polygon is column 9. 
@@ -24,7 +27,7 @@ name_true = 'paved';
 [index_trainval, index_poly] = splitTrainTest(data_meta, name_class, name_poly);
 
 % Through through K-Fold Iterations
-for i = 1:5
+for i = 1:1%5
     
     %% Bag Data 
     % Spectra were extracted from the imagery using polygons created from field assessment. 
@@ -37,7 +40,7 @@ for i = 1:5
     %% Determine target signatures
     % Using training dataset, determine target signatures using the Multiple Target
     % Multiple Instance algorithm.
-    parameters = setParameters(); % Set up parameters variable for MT MI algorithm
+    parameters = setParams(); % Set up parameters variable for MT MI algorithm
     results = milmd_targets(data_bag, parameters); % Get target signatures using MT MI
     
     %% Run Target Detection algorithm
