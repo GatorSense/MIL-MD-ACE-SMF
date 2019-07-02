@@ -42,7 +42,7 @@ addpath('Multi-Target-MI-ACE_SMF/algorithm')
 pDataBags = dataBagsWhitened.dataBags(data.labels ==  parameters.posLabel);
 nDataBags = dataBagsWhitened.dataBags(data.labels == parameters.negLabel);
 
-% 2) Initialize target concept 
+% 2) Initialize target signatures and maximize objective function
 if parameters.initType == 1
     [initTargets, initTargetLocation, originalPDataBagNumbers, initObjectiveValue] = init1(pDataBags, nDataBags, parameters);
 elseif parameters.initType == 2
@@ -54,7 +54,7 @@ else
     return
 end
 
-% 3) Optimize target concepts using MIL MD
+% 3) Optimize target concepts 
 if parameters.optimize == 0
     results = nonOptTargets(initTargets, parameters, dataInfo);
 elseif parameters.optimize == 1
@@ -68,9 +68,10 @@ end
 
 end
 
-function [initTargets, objectiveValues, C] = init_3(pDataBags, nDataBags, parameters)
+function [initTargets, objectiveValues, Ctargets] = init_3(pDataBags, nDataBags, parameters)
 % Function that initializes target signatures using K Means and maximize 
-% MIL MD objective function
+% MIL MD objective function. In this function, you need to start with more
+% clusters than desired target signatures.
 % Inputs:
 % 1) pDataBags: a structure containing the positive bags (already whitened) 
 % 2) nDataBags: a structure containing the negative bags (already whitened)
@@ -79,7 +80,7 @@ function [initTargets, objectiveValues, C] = init_3(pDataBags, nDataBags, parame
 % OUTPUTS:
 % 1) initTargets: matrix containing the initial targets [n_targets, n_dim]
 % 2) objectiveValues: 
-% 3) C: the K-Means cluster centers 
+% 3) Ctargets: the instances closest to the K-Means cluster centers 
 % ------------------------------------------------------------------------
 disp('Clustering Data');
 
@@ -91,26 +92,7 @@ pData = vertcat(pDataBags{:});
 [~,idx] = min(Cdist);
 Ctargets = pData(idx,:);
 
-% Loop through the number of targets
-initTargets = zeros(parameters.numTargets, size(Ctargets,2));
-numTargetsLearned = 0;
-for target = 1:parameters.numTargets
-    disp(['Initializing Target: ' num2str(target)]);
-    
-    % Loop through the K-Means cluster representative instances
-    objectiveValues = zeros(1, size(Ctargets,1));
-    pBagMaxConf = zeros(size(Ctargets,1), size(pDataBags, 2));
-    for j = 1:size(Ctargets, 1)
-        [objectiveValues(j), ~, pBagMaxConf(j,:)] = evalObjFunc_milmd(pDataBags, nDataBags, Ctargets(j, :), initTargets, numTargetsLearned, parameters);
-    end
-    
-    %Get location of max objective value
-    [~, opt_loc] = max(objectiveValues);
-    initTargets(target,:) = Ctargets(opt_loc, :);
-    Ctargets(opt_loc,:) = 0;
-    
-    numTargetsLearned = numTargetsLearned + 1;
-end
+milmd_ObjFuncInit(Ctargets, pDataBags, nDataBags, parameters)
 
 end
 
