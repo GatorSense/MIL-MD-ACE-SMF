@@ -40,8 +40,9 @@ for i = 1:1%5
     %% Determine target signatures
     % Using training dataset, determine target signatures using the Multiple Target
     % Multiple Instance algorithm.
-    parameters = setParams(); % Set up parameters variable for MT MI algorithm
-    results = milmd_targets(data_bag, parameters); % Get target signatures using MT MI
+    %parameters = setParams(); % Set up parameters variable for MIL MD algorithm
+    parameters = setParams();
+    results = milmd_targets(data_bag, parameters); % Get target signatures using MIL MD
     
     %% Run Target Detection algorithm
     % Once the target signatures have been idenified use either

@@ -44,10 +44,16 @@ nDataBags = dataBagsWhitened.dataBags(data.labels == parameters.negLabel);
 
 % 2) Initialize target signatures and maximize objective function
 if parameters.initType == 1
+    % Initialize by searching all positive instances and greedily selects
+    % instances that maximizes objective function. 
     [initTargets, initTargetLocation, originalPDataBagNumbers, initObjectiveValue] = init1(pDataBags, nDataBags, parameters);
 elseif parameters.initType == 2
+    % Initialize by K-means cluster centers and greedily selecting cluster
+    % center that maximizes objective function. 
     [initTargets, objectiveValues, C] = init2(pDataBags, nDataBags, parameters);
 elseif parameters.initType == 3
+    % Initalize by k-means cluster centers and selecting instance closest
+    % to cluster center. Finds the combination of instances that maximizes objective function. 
     [initTargets, initObjectiveValue, clustCenters] = init_3(pDataBags, nDataBags, parameters);
 else
     disp('Invalid initType parameter. Options are 1, 2, or 3.')
@@ -56,11 +62,14 @@ end
 
 % 3) Optimize target concepts 
 if parameters.optimize == 0
+    % Do not optimize targets - will return the initialized targets
     results = nonOptTargets(initTargets, parameters, dataInfo);
 elseif parameters.optimize == 1
+    % optmize targets using MT MI methodology
     results = optimizeTargets(data, initTargets, parameters);
 elseif parameters.optimize == 2
-    results = optTargetsMILMD(data, initTargets, parameters);
+    % optimize targets using MIL MD methodology
+    results = milmd_ObjFuncOpt(initTargets, pDataBags, nDataBags, parameters);
 else
     disp('Invalid optimize parameter. Options are 0, 1, or 2.')
     return
@@ -92,14 +101,8 @@ pData = vertcat(pDataBags{:});
 [~,idx] = min(Cdist);
 Ctargets = pData(idx,:);
 
-milmd_ObjFuncInit(Ctargets, pDataBags, nDataBags, parameters)
-% % Loop through Targets
-% for t = 1:parameters.numTargets
-%     %Loop through KMean instance representatives
-%     for c = 1:size(Ctargets,1)
-%         milmd_ObjFuncInit(Ctargets(c,:), pDataBags, nDataBags, parameters)
-%     end
-% end
+% Get targets that maximize objective function
+[objectiveValues, initTargets] = milmd_ObjFuncInit(Ctargets, pDataBags, nDataBags, parameters);
 
 end
 

@@ -17,7 +17,7 @@ index = 1:size(Ctargets,1);
 combo = combnk(index, parameters.numTargets);
 objValues = zeros(size(combo,1),1);
 
-% Loop through all combinations
+% Loop through all combinations of targets
 for c = 1:size(combo,1)
     targetSignature = Ctargets(combo(c,:),:);
     
@@ -41,7 +41,7 @@ function [cPos] = evalC1(targetSignatures, pDataBags, parameters)
 % 1) pDataBags: a cell array containing the positive bags
 % 2) targetSignature: the instances closest to the K-Means cluster centers [n_targets, n_dims]
 % 3) parameters: a structure containing the parameter variables. variables
-%                used in this function 
+%                used in this function are number of Targets
 % OUTPUTS:
 % 1) cPos: the computed term for the first term in the objective function.
 
