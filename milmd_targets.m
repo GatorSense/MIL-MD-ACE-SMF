@@ -69,7 +69,7 @@ elseif parameters.optimize == 1
     results = optimizeTargets(data, initTargets, parameters);
 elseif parameters.optimize == 2
     % optimize targets using MIL MD methodology
-    results = milmd_ObjFuncOpt(initTargets, pDataBags, nDataBags, parameters);
+    results = milmd_ObjFuncOpt(initTargets, pDataBags, nDataBags, parameters, dataInfo);
 else
     disp('Invalid optimize parameter. Options are 0, 1, or 2.')
     return
