@@ -15,13 +15,20 @@ function [results] = milmd_ObjFuncOpt(initTargets, pDataBags, nDataBags, paramet
 %              4) V: a singular value decomposition of matrix A, such that A = U*D*V'.
 %              5) U: a singular value decomposition of matrix A, such that A = U*D*V'.
 % OUTPUTS:
-% 1) objValues: The calculated objective values for each combination of
-%               KMean cluster representatives.
-% 2) targetSigInit: the targets selected that maximize the objective
-%                   function. 
+%% TODO FIX RESULTS  here and in milmd_targets.m
+%%
+% 1) results: a structure containing the following variables:
+%             1) b_mu: background mean [1, n_dim]
+%             2) b_cov: background covariance [n_dim, n_dim]
+%             3) sig_inv_half: inverse background covariance, [n_dim, n_dim]
+%             4) initTargets: the initial target signatures [n_targets, n_dim]
+%             5) methodFlag: value designating which method was used for similarity measure
+%             6) numTargets: the number of target signatures found
+%             7) optTargets: the optimized target signatures [n_opttargets,
+%                n_dim] Might have fewer targets then initTargets
 % -------------------------------------------------------------------------
 
-% Set up variable to hold the final optimized target signatures
+% Set up variable to hold the final optimized signatures
 finalOptTargets = zeros(parameters.numTargets, size(initTargets,2));
 
 % For each target, optimize signature
@@ -29,6 +36,8 @@ for k = 1:parameters.numTargets
     continueFlag = 1;
     iter = 0;
     inTarget = initTargets(k,:); % Set the first signature to the initialized target
+    %% TODO instead of storing all, just store 1.
+    %%
     optTargets = zeros(parameters.maxIter, size(initTargets,2)); % Store each iterations optimized signatures
     
     % Continue optimizing signatures until max iteration is reached or the
@@ -42,12 +51,12 @@ for k = 1:parameters.numTargets
         cPos = evalPos(pDataBags, inTarget, parameters);
         
         % Calculate the gradient value for negative bags - Equation 23 Page 5
-        cNeg = evalNeg(nDataBags, inTarget);
+        rnge = 1:parameters.numTargets;
+        rnge(k) = [];
+        cNeg = evalNeg(nDataBags, initTargets(rnge,:));
         
         % Calcualte the gradient value for diversity promoting term - Equation 18 on Page 5.
-        range = 1:parameters.numTargets;
-        range(k) = [];
-        cDiv = evalDiv(initTargets(range,:), parameters);
+        cDiv = evalDiv(initTargets(rnge,:), parameters);
         
         % Calcualte the gradient value for constraint term - Equation 24 & 25 Page 5
         cCon = evalCon(inTarget, parameters, cPos, cNeg, cDiv);
@@ -61,7 +70,7 @@ for k = 1:parameters.numTargets
         %If the target signature is similar enough to previous target signature, then it is done optimizing.
         %the paper does not specify what value or method they used for a stopping criterion 
         if(iter ~= 1)
-            if abs(mean(optTargets(iter,:) - optTargets(iter-1,:))) < 0.001
+            if norm(optTargets(iter,:) - optTargets(iter-1,:)) < 0.001
                 continueFlag = 0;
                 finalOptTargets(k,:) = optTargets(iter-1,:); % Set the final signature for this target
                 disp(['For Target ', num2str(k), ' Stopping at Iteration: ', num2str(iter-1)]);
@@ -110,17 +119,10 @@ for bag = 1:numPBags
     
     %Get data from specific bag
     pData = pDataBags{bag};
-             
-    % Get instance with max confidence using a target signature
-    if parameters.methodFlag == 0
-        % Use SMF as detector
-        [~, ~, pBagMaxID, ~, ~] = smf_det(pData', targetSignature',[],[],0);
-        pBagMax = pData(pBagMaxID(1),:);
-    else
-        % Use ACE as detector
-        [~, ~, pBagMaxID, ~, ~] = ace_det(pData', targetSignature',[],[],0);
-        pBagMax = pData(pBagMaxID(1),:);
-    end
+    
+    % find the max confidence instance in a positive bag
+    [~, pBagMaxIdx] = max(sum(pData.*targetSignature, 2));
+    pBagMax = pData(pBagMaxIdx,:);
     
     % Sum the instances found with max confidence for each target signature
     pBagSum(bag,:) = pBagMax/parameters.numTargets;   
@@ -131,7 +133,7 @@ cPos = mean(pBagSum);
 
 end
 
-function [cNeg] = evalNeg(nDataBags, targetSignature)
+function [cNeg] = evalNeg(nDataBags, targetSignatures)
 % The gradient based optimization algorith for the negative bags. Equation
 % 23 on Page 5.
 % INPUTS:
@@ -146,9 +148,11 @@ for bag = 1:numNBags
     
     %Get data from specific bag
     nData = nDataBags{bag};
-    
-    nBagVal = nData.* prod(((1 - targetSignature.*nData)/2));
-    
+    numPixels = size(nData,1);
+    nBagVal = zeros(numPixels, size(nData,2));
+    for n = 1:numPixels
+        nBagVal(n,:) = nData(n,:)*prod((1-targetSignatures*nData(n,:)')/2);    
+    end
     nBagMean(bag,:) = mean(nBagVal);
 end
 
@@ -166,11 +170,7 @@ function [cDiv] = evalDiv(targetSignature, parameters)
 % OUTPUTS:
 % 1) cDiv: the gradient of the diversity promoting term
 
-if size(targetSignature,1) > 1
-    cDiv = -(2/(parameters.numTargets*(parameters.numTargets-1))) * sum(targetSignature);
-else
-    cDiv = -(2/(parameters.numTargets*(parameters.numTargets-1))) * targetSignature;
-end
+cDiv = -(2/(parameters.numTargets*(parameters.numTargets-1))) * sum(targetSignature);
 
 end
 
@@ -188,14 +188,16 @@ function [cCon] = evalCon(targetSignature, parameters, cPos, cNeg, cDiv)
 % 1) cCon: the gradient based value for normalization constraint
 
 % Calculates delta T for the normalization constraint - Equation 25 page 5.
-cT = (cPos + cNeg + cDiv) - (((2 * parameters.lambda)/parameters.numTargets)*targetSignature);
+deltaT = cPos + cNeg + cDiv;
+derivCcon = (2 * parameters.lambda * targetSignature)/parameters.numTargets;
+cT = norm(deltaT) - norm(derivCcon);
 
 % Calculate the signature value
-cS = targetSignature'*targetSignature;
+sSquared = targetSignature*targetSignature';
 
-if sum(sum(cS >= 1)) == 0 && sum(cT) < 0
+if sSquared > 1 || (cT < 0 && sSquared == 1)
     cCon = (2/parameters.numTargets)*targetSignature;
-elseif sum(sum(cS <= 1)) == 0 && sum(cT) > 0
+elseif sSquared < 1 || (cT > 0 && sSquared == 1)
     cCon = -(2/parameters.numTargets)*targetSignature;
 else
     cCon = 0;

@@ -58,7 +58,9 @@ for bag = 1:numPBags
     for k = 1:parameters.numTargets
         %Confidences (dot product) of a sample across all other samples in pData, data has already been whitened
         pConf = sum(pData.*targetSignatures(k,:), 2);
-        
+        %% TODO CALL ace_det and look to see if this vs callig the function 
+        % yields different results
+        %%
         %Get max confidence for this bag
         pBagMax(k) = max(pConf)/parameters.numTargets;
     end
