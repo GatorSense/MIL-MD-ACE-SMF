@@ -19,4 +19,8 @@ parameters.optimize = 2;   % Determine whether to optimize target signatures
                            % 2: Optmize target signatures using MIL MD  
                            
 parameters.lambda = 1;     % Constant (greater than 0) that weights the constraint in the objective function
+
+parameters.stoppingCriterion = 10;   % Value that determines how similar two target signature iterations need to be 
+                                     % to stop optimization loop. 
+                                     % (norm(optTargetCurrent - optTargetPrevious) < parameters.stoppingCriterion)
 end

@@ -23,6 +23,7 @@ function [results] = milmd_targets(data, parameters)
 %     posLabel: what denotes a positive bag's label. ex) 1
 %     negLabel: what denotes a negative bag's label. ex) 0
 %     alpha: Uniqueness term weight in objective function, set to 0 if you do not want to use the term
+%     stoppingCriterion: Value that determines how similar two target signature iterations need to be to stop optimization loop. 
 %
 % OUTPUTS:
 % results: a structure containing the following variables:
@@ -101,7 +102,7 @@ pData = vertcat(pDataBags{:});
 [~,idx] = min(Cdist);
 Ctargets = pData(idx,:);
 
-% Get targets that maximize objective function
+% Get target signatures that maximize objective function
 [objectiveValues, initTargets] = milmd_ObjFuncInit(Ctargets, pDataBags, nDataBags, parameters);
 
 end
