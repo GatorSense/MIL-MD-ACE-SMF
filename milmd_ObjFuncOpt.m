@@ -69,7 +69,7 @@ for k = 1:parameters.numTargets
             disp(['For Target ', num2str(k), ' Stopping at Iteration: ', num2str(iter-1)]);
             
             % Store the final optimized target signature for this particular target
-            finalOptTargets(k,:) = optTargetCurrent(iter-1,:);
+            finalOptTargets(k,:) = optTargetCurrent;
             
             % Update set of targets for next target's optimization
             allTargets(k,:) = optTargetCurrent;
