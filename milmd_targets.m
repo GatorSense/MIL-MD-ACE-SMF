@@ -4,8 +4,8 @@ function [results] = milmd_targets(data, parameters)
 % Susan Meerdink
 % June 2019
 % Algorithm development found in:
-% P. Zhong, Z. Gong, and J. Shan, ìMultiple Instance Learning for Multiple 
-% Diverse Hyperspectral Target Characterizations,î IEEE Trans. Neural Networks
+% P. Zhong, Z. Gong, and J. Shan, ‚ÄúMultiple Instance Learning for Multiple 
+% Diverse Hyperspectral Target Characterizations,‚Äù IEEE Trans. Neural Networks
 %
 % INPUTS:
 % data.dataBags: cell list with positive and negative bags [1, n_Bags]
@@ -102,7 +102,7 @@ disp('Clustering Data');
 
 % Get K-Means cluster centers (C)
 pData = vertcat(pDataBags{:});
-[~, ~, ~, Cdist] = kmeans(pData, min(size(pData, 1), parameters.numClusters), 'MaxIter', parameters.maxIter);
+[~, ~, ~, Cdist] = kmeans(pData, min(size(pData, 1), parameters.numTargets), 'MaxIter', parameters.maxIter);
 
 % Get instance closest to cluster center, use as representative of the cluster
 [~,idx] = min(Cdist);
