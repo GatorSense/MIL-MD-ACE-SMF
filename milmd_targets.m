@@ -37,6 +37,12 @@ function [results] = milmd_targets(data, parameters)
 %                n_dim] Might have fewer targets then initTargets
 % ------------------------------------------------------------------------
 
+% 0) Check that the number of Targets is larger than 1 (otherwise will
+% return divide by 0 error in objective function)
+if parameters.numTargets == 1
+    error('Set number of targets to greater than 1.')
+end
+
 % 1) Whiten Data 
 addpath('Multi-Target-MI-ACE_SMF/algorithm')
 [dataBagsWhitened, dataInfo] = whitenData(data, parameters);
@@ -47,11 +53,11 @@ nDataBags = dataBagsWhitened.dataBags(data.labels == parameters.negLabel);
 if parameters.initType == 1
     % Initialize by searching all positive instances and greedily selects
     % instances that maximizes objective function. 
-    [initTargets, initTargetLocation, originalPDataBagNumbers, initObjectiveValue] = init1(pDataBags, nDataBags, parameters);
+    [initTargets, initTargetLocation, originalPDataBagNumbers, initObjectiveValue] = init.init1(pDataBags, nDataBags, parameters);
 elseif parameters.initType == 2
     % Initialize by K-means cluster centers and greedily selecting cluster
     % center that maximizes objective function. 
-    [initTargets, objectiveValues, C] = init2(pDataBags, nDataBags, parameters);
+    [initTargets, objectiveValues, C] = init.init2(pDataBags, nDataBags, parameters);
 elseif parameters.initType == 3
     % Initalize by k-means cluster centers and selecting instance closest
     % to cluster center. Finds the combination of instances that maximizes objective function. 
@@ -64,10 +70,10 @@ end
 % 3) Optimize target concepts 
 if parameters.optimize == 0
     % Do not optimize targets - will return the initialized targets
-    results = nonOptTargets(initTargets, parameters, dataInfo);
+    results = opt.nonOptTargets(initTargets, parameters, dataInfo);
 elseif parameters.optimize == 1
     % optmize targets using MT MI methodology
-    results = optimizeTargets(data, initTargets, parameters);
+    results = opt.optimizeTargets(data, initTargets, parameters);
 elseif parameters.optimize == 2
     % optimize targets using MIL MD methodology
     results = milmd_ObjFuncOpt(initTargets, pDataBags, nDataBags, parameters, dataInfo);
