@@ -1,6 +1,8 @@
 # MIL-MD-ACE-SMF
 In this repository, we provide the paper and code reconstructed from "Multiple Instance Learning for Multiple Diverse Hyperspectral Target Characterizations" manuscript. We are not the original authors of the algorithm. 
 
+If you use this code, please cite: [![DOI](https://zenodo.org/badge/193713677.svg)](https://zenodo.org/badge/latestdoi/193713677)
+
 _Susan Meerdink, Nick Kroeger, and Alina Zare_
 
 ## Cloning
