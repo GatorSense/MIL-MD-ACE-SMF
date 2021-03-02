@@ -1,7 +1,9 @@
 # MIL-MD-ACE-SMF
 In this repository, we provide the paper and code reconstructed from "Multiple Instance Learning for Multiple Diverse Hyperspectral Target Characterizations" manuscript. We are not the original authors of the algorithm. 
 
-If you use this code, please cite: [![DOI](https://zenodo.org/badge/193713677.svg)](https://zenodo.org/badge/latestdoi/193713677)
+If you use this code, please cite: 
+Susan Meerdink, & Nick Kroeger. (2020, April 13). GatorSense/MIL-MD-ACE-SMF: Version 1 (Version V1). Zenodo. http://doi.org/10.5281/zenodo.3750100
+[![DOI](https://zenodo.org/badge/193713677.svg)](https://zenodo.org/badge/latestdoi/193713677)
 
 _Susan Meerdink, Nick Kroeger, and Alina Zare_
 
